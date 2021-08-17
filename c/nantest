@@ -1,0 +1,51 @@
+/* Check the behaviour of NaN */
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <signal.h>
+#include <math.h>
+#ifdef __riscos
+typedef unsigned long uint32_t;
+#else
+#include <stdint.h>
+#endif
+
+int nantest(void)
+{
+    double nan;
+    int same;
+    int different;
+
+    printf("NaN test\n");
+    signal(SIGFPE, SIG_IGN);
+    nan = 0.0/0.0;
+    printf("nan = %f\n", nan);
+    printf("nan = %08x/%08x\n", ((uint32_t *)&nan)[0], ((uint32_t *)&nan)[1]);
+    same = nan == nan;
+    different = nan != nan;
+    printf("same = %i, different = %i\n", same, different);
+    return (same == 0) && (different == 1);
+}
+
+int inftest(void)
+{
+    double inf;
+    int same;
+    int different;
+
+    printf("INF test\n");
+    signal(SIGFPE, SIG_IGN);
+    inf = 1.0/0.0;
+    printf("inf = %f\n", inf);
+    printf("inf = %08x/%08x\n", ((uint32_t *)&inf)[0], ((uint32_t *)&inf)[1]);
+    same = inf == inf;
+    different = inf != inf;
+    printf("same = %i, different = %i\n", same, different);
+    return (same == 0) && (different == 1);
+}
+
+int main(void)
+{
+    nantest();
+    inftest();
+}
