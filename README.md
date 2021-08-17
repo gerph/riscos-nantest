@@ -7,7 +7,7 @@ Then we show the values of what we got back.
 
 ## RISC OS Pyromaniac behaviour
 
-On the FPEmulator 4.18, run under Pyromaniac, the following results are given from the test:
+On the FPEmulator 4.18, with the Select Shared C library (5.62), running under Pyromaniac, the following results are given from the test:
 
 ```
 pyrodev --common --command 'help FPEmulator' --command aif32.nantest
@@ -86,7 +86,7 @@ fc139b94 in shared library function
 82c8 in anonymous function
 ```
 
-So... that's not good. It's crashing somewhere in the ROM - and you probably guessed that it's in the FPEmulator at this point.
+So... that's not good. It's crashing somewhere in the ROM - and you probably guessed that it's in the FPEmulator at this point... but you (and I) got it wrong. It's actually in the SharedCLibrary.
 
 We don't have any trace other information to say what's going wrong, so we just have to scrounge around for more information
 
@@ -123,7 +123,7 @@ that point with a `*MemoryI`:
 000080DC : .` ã : E3A06001 : MOV     R6,#1
 ```
 
-This implies that we were in the middle of the division (or possibly the store). Either way we're in the FPEmulator, which is why the postmortem reported the actual address in the ROM. So let's dump the code around `&fc1367f4` to see what it's trying to do:
+This implies that we were in the middle of the division (or possibly the store). Either way we've got an address which tells use where the exception was reported in the ROM. So let's dump the code around `&fc1367f4` to see what it's trying to do:
 
 ```
 *memoryi fc1367f4-20+40
@@ -145,33 +145,8 @@ FC13680C : .ð á : E1A0F00E : MOV     PC,R14
 FC136810 : .. á : E1A00000 : MOV     R0,R0
 ```
 
-Looking at the instruction 2 back from the address given (due to the pipeline), this is `LDMIB R1,{R1-R9}` - load a set of registers from R1 incrementing before each. If we look up at the registers shown by `*ShowRegs` we see that R1 is &FFFFFFFD.
+Looking at the instruction 2 back from the address given (due to the pipeline), this is `LDMIB R1,{R1-R9}` - load a set of registers from R1 incrementing before each. If we look up at the registers shown by `*ShowRegs` we see that R1 is &FFFFFFFD. So something in the SharedCLibrary is breaking.
 
-
-## FPEmulator 4.37 under Pyromaniac
-
-But wait... with Pyromaniac we can get it to give us a full execution trace when it crashes! All we'd need to do is just turn on the full trace and we'll be able to see the value of the registers as it goes through the code. That's what it's for, after all.
-
-So I've saved out FPEmulator 4.37 from that image (Zap, grab the module, save it) and we can then load it into RISC OS Pyromaniac...
-
-    pyrodev --load-module "$ROMODULES/CLib,ffa" --config memorymap.zeropage_enable=true --command 'rmload FPEmulator' --command 'help FPEmulator' --command aif32.nantest
-
-And the result?
-
-```
-==> Help on keyword 'FPEmulator' (Module)
-Module is: FPEmulator      4.37 (12 Nov 2019) (1.13M)
-NaN test
-nan = nan
-nan = 7ff80000/e0000000
-same = 1, different = 0
-INF test
-inf = inf
-inf = 7ff00000/00000000
-same = 1, different = 0
-```
-
-Same successful result as with RISC OS Pyromaniac. So that's kinda interesting, but I have no idea what that might mean.
 
 ## RISC OS 3.7
 
@@ -231,7 +206,7 @@ So no state from the application.
 021FEFC4 : .. á : E1A00000 : MOV     R0,R0
 ```
 
-So the failure inside FPEmulator is the same as well.
+So the failure inside SharedCLibrary is the same as well.
 
 
 ## RISC OS 4
@@ -250,4 +225,15 @@ inf = 7ff00000/00000000
 same = 1, different = 0
 ```
 
-Which is unsurprising as it's using the same FPEmulator module.
+Which is unsurprising as it's using the same SharedCLibrary and FPEmulator module.
+
+
+## What's wrong?
+
+### On RISC OS 4
+
+The FPEmulator is returning the wrong result for a comparison of NaN. Maybe there's a flag setting that I missed which is meant to address that. I'll need to look into it.
+
+### On RISC OS 5
+
+I don't know what's wrong. But something's broken there.
