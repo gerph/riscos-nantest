@@ -5,7 +5,7 @@
 #
 # Program specific options:
 #
-COMPONENT  = nantest-stubsg
+COMPONENT  = nantest-stubs32
 
 # Specifies additional targets for startup
 #INITTARGET = inittarget
@@ -30,7 +30,9 @@ INCLUDES   =
 CDEFINES   =
 
 # Space separated list of libraries to link against.
-LIBS       = ${CLIB}
+LIBS       = <Lib$Dir>.CLib.o.stubs
+CLIBTYPE   = none
+
 
 # Objects to build, using the format o.<name> (will be varied for build type)
 OBJS       = o.nantest \
